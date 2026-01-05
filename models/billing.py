@@ -49,7 +49,7 @@ class BillingEvent(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
     event_type = Column(String(100), nullable=False)  # subscription_created, plan_changed, payment_succeeded, etc.
-    metadata = Column(JSON)
+    event_metadata = Column(JSON)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     def to_dict(self):
@@ -58,6 +58,6 @@ class BillingEvent(Base):
             'id': self.id,
             'user_id': self.user_id,
             'event_type': self.event_type,
-            'metadata': self.metadata,
+            'metadata': self.event_metadata,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }

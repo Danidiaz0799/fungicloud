@@ -65,7 +65,7 @@ class SyncEvent(Base):
     server_id = Column(Integer, ForeignKey('local_servers.id'), nullable=False, index=True)
     event_type = Column(String(100), nullable=False)  # sync_success, sync_failed, server_online, server_offline
     message = Column(Text)
-    metadata = Column(JSON)
+    event_metadata = Column(JSON)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     
     def to_dict(self):
@@ -75,6 +75,6 @@ class SyncEvent(Base):
             'server_id': self.server_id,
             'event_type': self.event_type,
             'message': self.message,
-            'metadata': self.metadata,
+            'metadata': self.event_metadata,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
