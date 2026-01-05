@@ -5,8 +5,7 @@ Configuración e inicialización de la base de datos PostgreSQL
 import os
 import logging
 from sqlalchemy import create_engine, text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import declarative_base, sessionmaker, scoped_session
 from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
@@ -90,3 +89,32 @@ def reset_database():
     
     init_database()
     logger.info("Base de datos reseteada")
+
+if __name__ == '__main__':
+    """Ejecutar para inicializar la base de datos"""
+    print("\n" + "="*70)
+    print("  🍄 FungiCloud - Inicialización de Base de Datos")
+    print("="*70 + "\n")
+    
+    logging.basicConfig(level=logging.INFO)
+    
+    try:
+        # Verificar variables de entorno
+        database_url = os.getenv('DATABASE_URL')
+        if not database_url:
+            print("❌ Error: DATABASE_URL no configurada en .env")
+            exit(1)
+        
+        print(f"📊 Conectando a: {database_url.split('@')[1] if '@' in database_url else database_url}")
+        
+        # Inicializar base de datos
+        init_database()
+        
+        print("\n" + "="*70)
+        print("  ✅ Base de datos inicializada correctamente")
+        print("="*70)
+        print("\n💡 Siguiente paso: python create_admin.py\n")
+        
+    except Exception as e:
+        print(f"\n❌ Error: {e}\n")
+        exit(1)
