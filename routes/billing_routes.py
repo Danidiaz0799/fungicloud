@@ -7,6 +7,7 @@ from routes.auth_routes import verify_token
 from database import get_db_session
 from models.user import User
 from models.billing import UserBilling, BillingEvent
+from models.local_server import LocalServer
 from services.stripe_service import StripeService
 import logging
 import os
@@ -16,6 +17,7 @@ billing_bp = Blueprint('billing', __name__)
 
 PLAN_LIMITS = {'free': 1, 'starter': 3, 'advance': 10, 'expert': -1}
 PLAN_PRICES = {'free': 0, 'starter': 5.00, 'advance': 17.50, 'expert': 29.50}
+PLAN_DISPLAY_NAMES = {'free': 'Gratis', 'starter': 'Starter', 'advance': 'Advance', 'expert': 'Expert'}
 
 def require_auth():
     auth_header = request.headers.get('Authorization', '')
@@ -36,7 +38,26 @@ def get_billing_status():
         billing = session.query(UserBilling).filter_by(user_id=user_data['user_id']).first()
         if not billing:
             return jsonify({"success": False, "error": "Billing no encontrado"}), 404
-        return jsonify({"success": True, "billing": billing.to_dict()})
+        
+        # Contar servidores locales (clientes) del usuario
+        clients_count = session.query(LocalServer).filter_by(user_id=user_data['user_id']).count()
+        
+        # Obtener límite según el plan
+        plan_limit = PLAN_LIMITS.get(billing.plan_type, 1)
+        can_create = True if plan_limit == -1 else clients_count < plan_limit
+        
+        # Construir respuesta con billing completo
+        billing_data = billing.to_dict()
+        billing_data['plan_display_name'] = PLAN_DISPLAY_NAMES.get(billing.plan_type, billing.plan_type.capitalize())
+        billing_data['limits'] = {
+            'clients': {
+                'current': clients_count,
+                'limit': plan_limit,
+                'can_create': can_create
+            }
+        }
+        
+        return jsonify({"success": True, "billing": billing_data})
 
 @billing_bp.route('/billing/plans', methods=['GET'])
 def get_plans():
