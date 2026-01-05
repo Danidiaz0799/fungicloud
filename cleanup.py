@@ -48,21 +48,25 @@ def cleanup():
                 for server in to_delete:
                     print(f"   ❌ Eliminando: {server.name} (ID: {server.server_id})")
                     
-                    # Primero eliminar datos de sincronización relacionados
-                    sync_data = session.query(SyncData).filter_by(server_id=server.id).all()
-                    if sync_data:
-                        print(f"      - Eliminando {len(sync_data)} registros de sync_data")
-                        for sd in sync_data:
-                            session.delete(sd)
-                    
+                    # Primero eliminar eventos de sincronización
                     sync_events = session.query(SyncEvent).filter_by(server_id=server.id).all()
                     if sync_events:
                         print(f"      - Eliminando {len(sync_events)} eventos de sync")
                         for se in sync_events:
                             session.delete(se)
+                    session.flush()  # Forzar eliminación antes de continuar
+                    
+                    # Luego eliminar datos de sincronización
+                    sync_data = session.query(SyncData).filter_by(server_id=server.id).all()
+                    if sync_data:
+                        print(f"      - Eliminando {len(sync_data)} registros de sync_data")
+                        for sd in sync_data:
+                            session.delete(sd)
+                    session.flush()  # Forzar eliminación antes de continuar
                     
                     # Ahora sí eliminar el servidor
                     session.delete(server)
+                    session.flush()  # Forzar eliminación del servidor
         
         session.commit()
         print("\n✅ Limpieza completada\n")
