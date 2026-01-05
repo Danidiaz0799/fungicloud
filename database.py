@@ -78,25 +78,26 @@ def init_database():
             result = conn.execute(text("SELECT 1"))
             logger.info("Conexión a base de datos verificada")
 
-        # Inicializar registros de billing para cada usuario
+        # Inicializar y corregir registros de billing para cada usuario
         with get_db_session() as session:
             users = session.query(User).all()
             for user in users:
+                # Determinar el plan correcto según el email
+                correct_plan = 'expert' if user.email == 'admin@fungi.co' else 'free'
+                
                 billing = session.query(UserBilling).filter_by(user_id=user.id).first()
+                
                 if not billing:
-                    # Solo admin@fungi.co obtiene plan expert (ilimitado), otros obtienen free
-                    plan_type = 'expert' if user.email == 'admin@fungi.co' else 'free'
-                    billing = UserBilling(user_id=user.id, plan_type=plan_type, plan_status='active')
+                    # Crear registro de billing si no existe
+                    billing = UserBilling(user_id=user.id, plan_type=correct_plan, plan_status='active')
                     session.add(billing)
-                    logger.info(f"Registro de billing creado para usuario {user.email} (id={user.id}, plan={plan_type})")
-                elif user.email == 'admin@fungi.co' and billing.plan_type != 'expert':
-                    # Actualizar admin@fungi.co a plan expert si no lo tiene
-                    billing.plan_type = 'expert'
-                    logger.info(f"Plan actualizado a 'expert' para admin {user.email} (id={user.id})")
-                elif user.email == 'free@fungi.co' and billing.plan_type != 'free':
-                    # Asegurar que free@fungi.co tenga plan free
-                    billing.plan_type = 'free'
-                    logger.info(f"Plan restablecido a 'free' para usuario {user.email} (id={user.id})")
+                    logger.info(f"✓ Billing creado: {user.email} → {correct_plan}")
+                elif billing.plan_type != correct_plan:
+                    # Corregir plan si es incorrecto
+                    old_plan = billing.plan_type
+                    billing.plan_type = correct_plan
+                    logger.info(f"✓ Billing corregido: {user.email} ({old_plan} → {correct_plan})")
+            
             session.commit()
         
     except Exception as e:
