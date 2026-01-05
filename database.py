@@ -72,12 +72,23 @@ def init_database():
         # Crear tablas
         Base.metadata.create_all(engine)
         logger.info("Base de datos inicializada correctamente")
-        
+
         # Verificar conexión
         with engine.connect() as conn:
             result = conn.execute(text("SELECT 1"))
             logger.info("Conexión a base de datos verificada")
-            
+
+        # Inicializar registros de billing para cada usuario
+        with get_db_session() as session:
+            users = session.query(User).all()
+            for user in users:
+                billing = session.query(UserBilling).filter_by(user_id=user.id).first()
+                if not billing:
+                    billing = UserBilling(user_id=user.id, plan_type='free', plan_status='active')
+                    session.add(billing)
+                    logger.info(f"Registro de billing creado para usuario {user.email} (id={user.id})")
+            session.commit()
+        
     except Exception as e:
         logger.error(f"Error al inicializar base de datos: {e}")
         raise
