@@ -10,6 +10,7 @@ from database import get_db_session
 from models.user import User
 from models.billing import UserBilling
 from models.local_server import LocalServer
+from models.sync_data import SyncData, SyncEvent
 
 def cleanup():
     print("\n" + "="*70)
@@ -46,6 +47,21 @@ def cleanup():
                 print(f"   ✓ Manteniendo: {keep.name} (ID: {keep.server_id})")
                 for server in to_delete:
                     print(f"   ❌ Eliminando: {server.name} (ID: {server.server_id})")
+                    
+                    # Primero eliminar datos de sincronización relacionados
+                    sync_data = session.query(SyncData).filter_by(server_id=server.id).all()
+                    if sync_data:
+                        print(f"      - Eliminando {len(sync_data)} registros de sync_data")
+                        for sd in sync_data:
+                            session.delete(sd)
+                    
+                    sync_events = session.query(SyncEvent).filter_by(server_id=server.id).all()
+                    if sync_events:
+                        print(f"      - Eliminando {len(sync_events)} eventos de sync")
+                        for se in sync_events:
+                            session.delete(se)
+                    
+                    # Ahora sí eliminar el servidor
                     session.delete(server)
         
         session.commit()
