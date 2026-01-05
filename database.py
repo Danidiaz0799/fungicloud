@@ -4,9 +4,13 @@ Configuración e inicialización de la base de datos PostgreSQL
 """
 import os
 import logging
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker, scoped_session
 from contextlib import contextmanager
+
+# Cargar variables de entorno
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
