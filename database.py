@@ -84,15 +84,19 @@ def init_database():
             for user in users:
                 billing = session.query(UserBilling).filter_by(user_id=user.id).first()
                 if not billing:
-                    # Admin obtiene plan expert (ilimitado), otros usuarios obtienen free
-                    plan_type = 'expert' if user.is_admin else 'free'
+                    # Solo admin@fungi.co obtiene plan expert (ilimitado), otros obtienen free
+                    plan_type = 'expert' if user.email == 'admin@fungi.co' else 'free'
                     billing = UserBilling(user_id=user.id, plan_type=plan_type, plan_status='active')
                     session.add(billing)
                     logger.info(f"Registro de billing creado para usuario {user.email} (id={user.id}, plan={plan_type})")
-                elif user.is_admin and billing.plan_type == 'free':
-                    # Actualizar admin que tenga plan free a expert
+                elif user.email == 'admin@fungi.co' and billing.plan_type != 'expert':
+                    # Actualizar admin@fungi.co a plan expert si no lo tiene
                     billing.plan_type = 'expert'
                     logger.info(f"Plan actualizado a 'expert' para admin {user.email} (id={user.id})")
+                elif user.email == 'free@fungi.co' and billing.plan_type != 'free':
+                    # Asegurar que free@fungi.co tenga plan free
+                    billing.plan_type = 'free'
+                    logger.info(f"Plan restablecido a 'free' para usuario {user.email} (id={user.id})")
             session.commit()
         
     except Exception as e:
