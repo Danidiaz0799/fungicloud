@@ -89,3 +89,69 @@ def create_checkout():
 def stripe_webhook():
     # Implementar lógica de webhook de Stripe
     return jsonify({"success": True})
+
+@billing_bp.route('/billing/subscription/cancel', methods=['POST'])
+def cancel_subscription():
+    """Cancela la suscripción del usuario"""
+    user_data, error = require_auth()
+    if error: return error
+    
+    data = request.get_json()
+    immediately = data.get('immediately', False)
+    
+    with get_db_session() as session:
+        billing = session.query(UserBilling).filter_by(user_id=user_data['user_id']).first()
+        
+        if not billing or not billing.stripe_subscription_id:
+            return jsonify({"success": False, "error": "No hay suscripción activa"}), 404
+        
+        stripe_service = StripeService()
+        result = stripe_service.cancel_subscription(billing.stripe_subscription_id, immediately)
+        
+        if result['success']:
+            if immediately:
+                billing.plan_type = 'free'
+                billing.plan_status = 'cancelled'
+                billing.stripe_subscription_id = None
+            else:
+                billing.plan_status = 'cancelling'
+            
+            # Registrar evento
+            event = BillingEvent(
+                user_id=user_data['user_id'],
+                event_type='subscription_cancelled',
+                event_metadata={'immediately': immediately}
+            )
+            session.add(event)
+            session.commit()
+            
+            return jsonify({
+                "success": True,
+                "message": "Suscripción cancelada" if immediately else "Suscripción se cancelará al final del período"
+            })
+        
+        return jsonify({"success": False, "error": result.get('message', 'Error desconocido')}), 500
+
+@billing_bp.route('/billing/events', methods=['GET'])
+def get_billing_events():
+    """Obtiene el historial de eventos de billing del usuario"""
+    user_data, error = require_auth()
+    if error: return error
+    
+    limit = request.args.get('limit', 50, type=int)
+    event_type = request.args.get('event_type', None)
+    
+    with get_db_session() as session:
+        query = session.query(BillingEvent).filter_by(user_id=user_data['user_id'])
+        
+        if event_type:
+            query = query.filter_by(event_type=event_type)
+        
+        events = query.order_by(BillingEvent.created_at.desc()).limit(limit).all()
+        
+        return jsonify({
+            "success": True,
+            "events": [e.to_dict() for e in events],
+            "count": len(events)
+        })
+
