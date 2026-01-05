@@ -82,8 +82,8 @@ def init_database():
         with get_db_session() as session:
             users = session.query(User).all()
             for user in users:
-                # Determinar el plan correcto según el email
-                correct_plan = 'expert' if user.email == 'admin@fungi.co' else 'free'
+                # Determinar el plan correcto: admin = expert, otros = free
+                correct_plan = 'expert' if user.is_admin else 'free'
                 
                 billing = session.query(UserBilling).filter_by(user_id=user.id).first()
                 
